@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <windows.h>
 #include "input.h"
 #include "game.h"
+#include "stats.h"
+#include "utils.h"
 
 void printMainMenu() {
     printf(""
@@ -45,6 +48,14 @@ int choice() {
 }
 
 int main() {
+    // exclude other Gomoku applications
+    HANDLE hMutex = CreateMutex(NULL, FALSE, TEXT("Gomoku_Gomoko_exec"));
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        printf("ERROR: Another Gomoku has already been running.\n\n");
+        utils_waitEnter("Press ENTER to exit...");
+        return 0;
+    }
+    // main menu
     int ch;
     while ((ch = choice()) != 0) {
         if (ch == 1) {
@@ -52,6 +63,7 @@ int main() {
             game_newGame();
         } else if (ch == 2) {
             // see stats
+            stats_display();
         }
     }
     printf("See you next time.\n");

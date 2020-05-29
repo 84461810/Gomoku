@@ -7,6 +7,8 @@
 #include <time.h>
 #include "input.h"
 #include "rule.h"
+#include "stats.h"
+#include "utils.h"
 
 #define is_valid_index(c) ((c) >= 'a' && (c) <= ('a' + BOARD_SIZE - 1))
 #define player_name(turn) ((turn == ROLE_PLAYER) ? "Player" : "Gomoko")
@@ -70,9 +72,7 @@ static void decideOrder() {
     system("cls");
     do {
         // press ENTER
-        printf("Press ENTER to roll a dice...");
-        input_nextChar(NULL);
-        input_endLine();
+        utils_waitEnter("Press ENTER to roll a dice...");
         // both player and Gomoko roll
         playerRoll = rand() % 6 + 1;
         gomokoRoll = rand() % 6 + 1;
@@ -88,9 +88,7 @@ static void decideOrder() {
         }
     } while (playerRoll == gomokoRoll);
     // end rolling
-    printf("Press ENTER to continue...");
-    input_nextChar(NULL);
-    input_endLine();
+    utils_waitEnter("Press ENTER to continue...");
     // initialize the turn
     turn = firstGoer;
 }
@@ -245,9 +243,14 @@ void game_newGame() {
     system("cls");
     printBoard();
     if (winner < 0) {
-        printf("* Fair. No one has won. *");
+        printf("* Fair. No one has won. *\n\n");
+    } else {
+        printf("* %s has won the game! *\n\n", player_name(1 - turn));
+        if (winner == ROLE_PLAYER) {
+            stats_addWin();
+        } else {
+            stats_addLose();
+        }
     }
-    printf("* %s has won the game! *", player_name(1 - turn));
-    input_nextChar(NULL);
-    input_endLine();
+    utils_waitEnter("Press ENTER to return to menu...");
 }
