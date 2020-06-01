@@ -12,7 +12,7 @@ void utils_waitEnter(const char *hint) {
     input_endLine();
 }
 
-void utils_fatalError(const char *hint, int code) {
+void __attribute__((noreturn)) utils_fatalError(const char *hint, int code) {
     utils_waitEnter(hint);
     exit(code);
 }

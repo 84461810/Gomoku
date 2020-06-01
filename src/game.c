@@ -3,37 +3,58 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
 #include <time.h>
 #include "input.h"
 #include "rule.h"
 #include "stats.h"
 #include "utils.h"
+#include "gomoko/gomoko.h"
 
 #define is_valid_index(c) ((c) >= 'a' && (c) <= ('a' + BOARD_SIZE - 1))
 #define player_name(turn) ((turn == ROLE_PLAYER) ? "Player" : "Gomoko")
-#define is_valid_pos(row, col) (row >= 0 && row <= BOARD_SIZE && col >= 0 && col <= BOARD_SIZE)
-
-static int dirRow[4] = {0, 1, 1, 1};
-static int dirCol[4] = {1, 0, 1, -1};
 
 static int difficulty = 0;
-static char board[BOARD_SIZE][BOARD_SIZE];
+static board_t board;
 static int steps;
 static int turn, firstGoer;
 static int lastPlayRow = -1, lastPlayColumn = -1;
-static char lastPlayChess;
 
 static void printBoardLine(int row) {
-    printf("  %c\t%c", ('a' + row), board[row][0]);
-    for (int j = 1; j < BOARD_SIZE; j++) {
-        printf("--%c", board[row][j]);
+    if (lastPlayRow != row) {
+        // normal line
+        printf("  %c\t %c", ('a' + row), board[row][0]);
+        for (int j = 1; j < BOARD_SIZE; j++) {
+            printf("--%c", board[row][j]);
+        }
+    } else {
+        // line where last play lies
+        // first column
+        if (lastPlayColumn == 0) {
+            printf("  %c\t[%c]", ('a' + row), board[row][0]);
+        } else {
+            printf("  %c\t %c-", ('a' + row), board[row][0]);
+        }
+        // middle columns
+        for (int j = 1; j < BOARD_SIZE - 1; j++) {
+            if (lastPlayColumn == j) {
+                printf("[%c]", board[row][j]);
+            } else {
+                printf("-%c-", board[row][j]);
+            }
+        }
+        // last column
+        if (lastPlayColumn == BOARD_SIZE - 1) {
+            printf("[%c]", board[row][BOARD_SIZE - 1]);
+        } else {
+            printf("-%c", board[row][BOARD_SIZE - 1]);
+        }
     }
+    // return
     printf("\n");
 }
 
 static void printBoardLineSeparator() {
-    printf("\t|");
+    printf("\t |");
     for (int j = 1; j < BOARD_SIZE; j++) {
         printf("  |");
     }
@@ -41,7 +62,7 @@ static void printBoardLineSeparator() {
 }
 
 static void printBoardBottom() {
-    printf("\n\ta");
+    printf("\n\t a");
     for (int j = 1; j < BOARD_SIZE; j++) {
         printf("  %c", 'a' + j);
     }
@@ -59,12 +80,23 @@ static void printBoard() {
 }
 
 static void clearBoard() {
-    memset((void *) board, '+', BOARD_SIZE * BOARD_SIZE);
+    memset((void *) board, GRID_EMPTY, BOARD_SIZE * BOARD_SIZE);
 }
 
 static void selectDiff() {
-    // TODO: select difficulty
-    difficulty = 0;
+    unsigned int diff = 0;
+    int invalidInput = 0;
+    do {
+        system("cls");
+        // hint for error
+        if (invalidInput) {
+            printf("* Invalid input! Please enter an integer within 1~5. *\n\n");
+        }
+        printf("Select difficulty (1~5): ");
+        invalidInput = input_nextUnsignedInt(&diff);
+        input_endLine();
+    } while (diff < 1 || diff > 5);
+    difficulty = (int) diff;
 }
 
 static void decideOrder() {
@@ -94,12 +126,11 @@ static void decideOrder() {
 }
 
 static int playAt(char c, int row, int col) {
-    if (board[row][col] == '+') {
+    if (board[row][col] == GRID_EMPTY) {
         // empty position
         board[row][col] = c;
         lastPlayRow = row;
         lastPlayColumn = col;
-        lastPlayChess = c;
         steps++;
         return 0;
     }
@@ -140,7 +171,7 @@ static void playerPlay() {
         // try to play at the specified position
         row = rowCh - 'a';
         col = colCh - 'a';
-        if (playAt('O', row, col) < 0) {
+        if (playAt(GRID_PLAYER, row, col) < 0) {
             ruleDenied = 1;
             continue;
         }
@@ -153,65 +184,14 @@ static void gomokoPlay() {
     system("cls");
     printBoard();
     printf("Gomoko thinking...");
-    // TODO: GOMOKO AI
-    Sleep(500);
-    int ret;
-    do {
-        int x = rand() % BOARD_SIZE;
-        int y = rand() % BOARD_SIZE;
-        ret = playAt('X', x, y);
-    } while (ret < 0);
-}
-
-static int checkGomokuInDirection(char chess, int row, int col, int dir) {
-    int i, moku = 1;
-    // to negative direction
-    int r = row, c = col, dr = dirRow[dir], dc = dirCol[dir];
-    for (i = 1; i < 5; i++) {
-        r -= dr;
-        c -= dc;
-        if (!is_valid_pos(r, c)) {
-            break;
-        }
-        if (board[r][c] != chess) {
-            break;
-        }
-    }
-    moku += i - 1;
-    // to positive direction
-    r = row;
-    c = col;
-    for (i = 1; i < 5; i++) {
-        r += dr;
-        c += dc;
-        if (!is_valid_pos(r, c)) {
-            break;
-        }
-        if (board[r][c] != chess) {
-            break;
-        }
-    }
-    moku += i - 1;
-    // result
-    return (moku >= 5);
-}
-
-static int checkGomoku(char chess, int row, int col) {
-    for (int i = 0; i < 4; i++) {
-        if (checkGomokuInDirection(chess, row, col, i)) return 1;
-    }
-    return 0;
+    // AI
+    int row, col;
+    gomoko_suggest((char *) board, difficulty, &row, &col);
+    playAt(GRID_GOMOKO, row, col);
 }
 
 static int judgeWinner() {
-    if (lastPlayRow < 0) {
-        return -1;
-    }
-    if (checkGomoku(lastPlayChess, lastPlayRow, lastPlayColumn)) {
-        return (1 - turn);
-    } else {
-        return -1;
-    }
+    return rule_judgeWinner(board, 1 - turn, lastPlayRow, lastPlayColumn);
 }
 
 static int boardIsFull() {
