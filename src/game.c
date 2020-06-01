@@ -204,6 +204,8 @@ void game_newGame() {
     clearBoard();
     difficulty = 0;
     steps = 0;
+    lastPlayRow = -1;
+    lastPlayColumn = -1;
     // select difficulty
     selectDiff();
     decideOrder();

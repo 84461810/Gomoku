@@ -199,6 +199,9 @@ static int findBestChoice(int depth, int turn, int refBestScore,
                     //printf("depth %d: cut at %d, sc=%d, ref=%d\n", depth, i, sc, refBestScore);
                 // recover the board
                 board[r][c] = GRID_EMPTY;
+                // free & return
+                free(rows);
+                free(cols);
                 return EVAL_CUT;
             }
             // update the best score
@@ -255,13 +258,9 @@ static int findBestChoice(int depth, int turn, int refBestScore,
     *steps = maxStep;
     free(rows);
     free(cols);
-    if (bestRows) {
+    if (depth == 0) {
         free(bestRows);
-    }
-    if (bestCols) {
         free(bestCols);
-    }
-    if (bestSteps) {
         free(bestSteps);
     }
     return EVAL_NORMAL;
